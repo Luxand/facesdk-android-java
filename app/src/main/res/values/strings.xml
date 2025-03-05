@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">LiveRecognition</string>
+    <string name="flip">FLIP</string>
+    <string name="enter_name">Enter name</string>
+    <string name="clear">CLEAR</string>
+    <string name="set_name">Set name</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="no_permissions">Permissions not granted by the user</string>
+    <string name="wrong_detection_version">Saved tracker data has wrong detection version</string>
+    <string name="match">MATCH</string>
+    <string name="match_title">Face found!</string>
+    <string name="face_not_found_error">Face not found</string>
+    <string name="no_match_error">Can not find this face in the tracker DB</string>
+    <string name="error_title">Error</string>
+    <string name="no_match_title">No match</string>
+    <string name="face_found">The face matched with \"%s\", id: %d, similarity: %f</string>
+    <string name="error">Error id: %d</string>
+    <string name="choose_image">Select JPEG, PNG, or BMP Image</string>
+    <string name="image_read_error">Cannot open image</string>
+    <string name="live_face">Liveness: %.2f</string>
+    <string name="fake_face">Liveness: %.2f (fake)</string>
+    <string name="low_image_quality">Low quality: %.3f</string>
+    <string name="image_quality">Quality: %.3f</string>
+    <string name="liveness_on">LIVENESS ON</string>
+    <string name="liveness_off">LIVENESS OFF</string>
+    <string name="activation_error">Activation failed. Please provide a valid activation key to FSDK.ActivateLibrary function</string>
+</resources>

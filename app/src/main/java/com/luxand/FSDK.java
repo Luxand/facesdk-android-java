@@ -53,7 +53,8 @@ public class FSDK
 	public static final int FSDKE_CAMERA_INDEX_DOES_NOT_EXIST = -27;
 	public static final int FSDKE_PLATFORM_NOT_LICENSED = -28;
 	public static final int FSDKE_TENSORFLOW_NOT_INITIALIZED = -29;
-
+	public static final int FSDKE_FACEID_NOT_FOUND = -32;
+	public static final int FSDKE_FACEIMAGE_NOT_FOUND = -33;
 
 	// Facial feature count
 
@@ -339,6 +340,11 @@ public class FSDK
 
 	public static native int SetParameter(String ParameterName, String ParameterValue);
 	public static native int SetParameters(String Parameters, int ErrorPosition[]);
+
+	public static int InitializeLibrary() {
+		SetParameter("environment", "Android, Java");
+		return Initialize();
+	}
 
 	private static class AssetsHelper {
 		private final String assetsPath;

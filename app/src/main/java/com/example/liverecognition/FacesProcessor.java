@@ -218,7 +218,7 @@ public class FacesProcessor {
         if (FSDK.ActivateLibrary("Insert the license key here") != FSDK.FSDKE_OK)
             return false;
 
-        FSDK.Initialize();
+        FSDK.InitializeLibrary();
 
         /* Copy iBeta liveness addon assets to the cache directory. */
         FSDK.PrepareData(application);

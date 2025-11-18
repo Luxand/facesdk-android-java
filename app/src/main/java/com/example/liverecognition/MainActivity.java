@@ -148,6 +148,8 @@ public class MainActivity extends AppCompatActivity {
             if (event.getActionMasked() == MotionEvent.ACTION_UP) {
                 var face = facesView.getFaceContainingPoint(event.getX(), event.getY());
                 if (face != null) {
+                    var name = face.lockName();
+
                     var builder = new AlertDialog.Builder(this);
                     var inflater = getLayoutInflater();
                     builder.setTitle(R.string.set_name);
@@ -155,12 +157,12 @@ public class MainActivity extends AppCompatActivity {
                     var dialogLayout = inflater.inflate(R.layout.edit_name_dialog, null);
                     var editText = dialogLayout.<EditText>findViewById(R.id.edit_name);
 
-                    var oldName = face.getName();
+                    var oldName = name.get();
                     if (!oldName.isEmpty())
                         editText.setText(oldName);
 
                     builder.setView(dialogLayout);
-                    builder.setPositiveButton(R.string.ok, (dialogInterface, which) -> face.setName(editText.getText().toString()));
+                    builder.setPositiveButton(R.string.ok, (dialogInterface, which) -> name.setAndUnlock(editText.getText().toString()));
 
                     builder.setNegativeButton(R.string.cancel, ((dialogInterface, which) -> {}));
 
@@ -427,7 +429,7 @@ public class MainActivity extends AppCompatActivity {
                                 matrix.postTranslate(-1, 1);
                                 break;
                             case 180:
-                                matrix.postTranslate(1,1);
+                                matrix.postTranslate(1, 1);
                                 break;
                             case 270:
                                 matrix.postTranslate(1, -1);

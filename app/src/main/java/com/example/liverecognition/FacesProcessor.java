@@ -34,6 +34,43 @@ public class FacesProcessor {
     private static boolean enableLiveness = false;
 
     /**
+     * Locks ID and its name while it is being updated.
+     */
+    public static class NameLock {
+
+        private long id;
+        private String name;
+
+        public NameLock(final long id, final String name) {
+            this.id = id;
+            this.name = name;
+            lock();
+        }
+
+        public void lock() {
+            FSDK.LockID(tracker, this.id);
+        }
+
+        public void unlock() {
+            FSDK.UnlockID(tracker, this.id);
+        }
+
+        @NonNull
+        public String get() {
+            return name;
+        }
+
+        public void set(final String value) {
+            FSDK.SetName(tracker, id, value);
+        }
+
+        public void setAndUnlock(final String value) {
+            set(value);
+            unlock();
+        }
+    }
+
+    /**
      * Stores information about the detected face: bounding box, name, liveness probability.
      * Additionally for iBeta liveness addon provides image quality and liveness error information.
      */
@@ -95,12 +132,6 @@ public class FacesProcessor {
             return name;
         }
 
-        public void setName(final String value) {
-            FSDK.LockID(tracker, id);
-            FSDK.SetName(tracker, id, value);
-            FSDK.UnlockID(tracker, id);
-        }
-
         @NonNull
         public RectF getRect() {
             return rect;
@@ -118,6 +149,9 @@ public class FacesProcessor {
             return livenessError;
         }
 
+        public NameLock lockName() {
+            return new NameLock(id, name);
+        }
     }
 
     /**

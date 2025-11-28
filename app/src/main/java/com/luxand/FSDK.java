@@ -342,7 +342,6 @@ public class FSDK
 	public static native int SetParameters(String Parameters, int ErrorPosition[]);
 
 	public static int InitializeLibrary() {
-		SetParameter("environment", "Android, Java");
 		return Initialize();
 	}
 

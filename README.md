@@ -21,7 +21,7 @@ The iBeta certified Liveness add-on for FaceSDK aced Level 1 Presentation Attack
 
 ## Improved Face Detection and Recognition
 
-The accuracy of face detection and recognition is significantly improved. Note that the face template size has been increased to 2068 bytes and the recognition threshold has been reduced. Threshold values as low as 0.7-0.8 provide good results in our tests.
+The accuracy of face detection and recognition is significantly improved. Note that the face template size has been increased to 2068 bytes and the recognition threshold has been reduced. Threshold values as low as 0.8 provide good results in our tests.
 
 Use the following classes and functions to use the improved algorithms.
 

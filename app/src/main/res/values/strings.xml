@@ -7,7 +7,6 @@
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="no_permissions">Permissions not granted by the user</string>
-    <string name="wrong_detection_version">Saved tracker data has wrong detection version</string>
     <string name="match">MATCH</string>
     <string name="match_title">Face found!</string>
     <string name="face_not_found_error">Face not found</string>

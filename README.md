@@ -19,11 +19,25 @@ The iBeta certified Liveness add-on for FaceSDK aced Level 1 Presentation Attack
 
 ## ![image1](images/image1.jpg) ![image2](images/image2.jpg) 
 
-## Improved Face Detection and Recognition
+## Sample
 
-The accuracy of face detection and recognition is significantly improved. Note that the face template size has been increased to 2068 bytes and the recognition threshold has been reduced. Threshold values as low as 0.8 provide good results in our tests.
+`LiveRecognition` &mdash; live face recognition with liveness detection from the device camera (CameraX), using Luxand FaceSDK 9.0 and the [iBeta Certified Liveness Addon](https://www.luxand.com/facesdk/documentation/certifiedliveness.php).
 
-Use the following classes and functions to use the improved algorithms.
+- Faces are tracked and recognized with the Tracker API; tap a face to assign a name to it.
+- Recognized faces are stored in the tracker memory file `tracker90.dat` in the app's external files directory.
+- A photo can be matched against the tracker memory.
+
+### Getting Started
+
+1. Open the project in Android Studio.
+2. Replace `INSERT THE LICENSE KEY HERE` with your license key in the `FSDK.ActivateLibrary` call in `app/src/main/java/com/example/liverecognition/FacesProcessor.java`.
+3. Build and run the app on a device.
+
+The FaceSDK native libraries and the iBeta add-on are in `app/src/main/jniLibs`, the iBeta data files are in `app/src/main/assets/data` (they are copied to the app's cache directory at startup with `FSDK.PrepareData`).
+
+## FaceSDK 9.0 API
+
+FaceSDK 9.0 uses new neural network models for face detection and recognition. The face template size is 1040 bytes. Templates and tracker memory files created with FaceSDK 8.x are not compatible with 9.0.
 
 ```java
 public static class BBox {
@@ -32,74 +46,72 @@ public static class BBox {
 }
 
 public static class TFace {
-    public BBox boundingBox = new BBox();
+    public float score;       // detection confidence, 0..1
+    public float angle;       // in-plane rotation angle, degrees
+    public BBox bbox = new BBox();
     public TPoint features[] = new TPoint[5];
+
+    public int left(), top(), right(), bottom(), width(), height();
 }
 
-public static class TFaces2 {
-    public TFace faces[] = null;
-    public int maxFaces = 100;
+public static class TFaces {
+    public TFace faces[];
+    public int maxFaces;
 }
 ```
 
-*Use `TFace` instead of `TFacePosition` class when working with improved face detection. Points `p0` and `p1` correspond to top left and bottom right corner coordinates of the face bounding box. `features` contain 5 points detected on the face: eye centers, nose and mouth corners. Use `TFaces2` instead of `TFaces` when working with the `DetectMultipleFaces2` function.*
+*`TFace` replaces the `TFacePosition` class of previous versions. Points `bbox.p0` and `bbox.p1` correspond to top left and bottom right corner coordinates of the face bounding box. `features` contain 5 points detected on the face: eye centers, nose and mouth corners. The 70 facial features (`FSDK_Features`) are returned as `TPointF` (floating point coordinates).*
 
 ```java
-int FSDK.DetectFace2(HImage Image, TFace face);
+int FSDK.DetectFace(HImage Image, TFace face);
 ```
 
 *Detects a single face on the given image. If multiple faces are present, the function returns the one with the highest confidence.*
 
 ```java
-int FSDK.DetectMultipleFaces2(HImage Image, TFaces2 faces);
+int FSDK.DetectMultipleFaces(HImage Image, TFaces faces);
 ```
 
 *Detects multiple faces on the given image. The faces are sorted by confidence in descending order.*
 
 ```java
-int FSDK.GetFaceTemplate2(HImage image, FSDK_FaceTemplate FaceTemplate);
+int FSDK.GetFaceTemplate(HImage image, FSDK_FaceTemplate FaceTemplate);
 ```
 
-*Obtains a face template for the face with the most confidence on the image (as returned by `DetectFace2` function). Note that the face template size is 2068 bytes.*
+*Obtains a face template for the face with the highest confidence on the image (as returned by the `DetectFace` function).*
 
 ```java
-int FSDK.GetFaceTemplateInRegion2(HImage image, TFace face, FSDK_FaceTemplate FaceTemplate);
+int FSDK.GetFaceTemplateInRegion(HImage image, TFace face, FSDK_FaceTemplate FaceTemplate);
 ```
 
-*Obtains a face template for the given `face`. Note that the face template size is 2068 bytes.*
+*Obtains a face template for the given `face`.*
 
-### Configuring Improved Face Detection and Recognition
+### Configuring Face Detection and Recognition
 
-Parameters of the improved face detection and recognition are set using the `FSDK.SetParameter` or `FSDK.SetMultipleParameters` functions (see [documentation](https://www.luxand.com/facesdk/documentation/configuration.php)). The available parameters are listed below.
+Parameters are set using the `FSDK.SetParameter` or `FSDK.SetParameters` functions (see [documentation](https://www.luxand.com/facesdk/documentation/configuration.php)). For the Tracker API use `FSDK.SetTrackerParameter` and `FSDK.SetTrackerMultipleParameters` (see [documentation](https://www.luxand.com/facesdk/documentation/trackerfunctions.php#FSDK_SetTrackerParameter)). The main parameters are listed below.
 
 #### Face Detection
 
 | Parameter | Description | Default Value | Accepted Values |
 | :---      | :---        |     :---:     | :---            |
-| FaceDetection2Model | Path to the face detection model file to load | default | File path or the string `"default"` |
-| FaceDetection2Threshold | Face detection threshold | 0.64 | Floating point value from the range [0, 1] |
-| FaceDetection2BatchSize | Number of image patches processed at the same time for face detection | 1 | Positive integer |
-| FaceDetection2PatchSize | Size of a single image patch | 640 | Positive integer. Higher values decrease performance, but allow detection of smaller faces |
-| FaceDetection2PatchMode | Image patching algorithm to use | fast | <p>`"fast"` &mdash; resizes the image to `FaceDetection2PatchSize` and performs detection on a single patch</p> <p>`"full"` &mdash; splits the image into overlapping patches of size `FaceDetection2PatchSize` and performs detection on every patch separately combing the results afterwards</p> <p>`"mixed"` &mdash; if the image size is at least twice as big as `FaceDetection2PatchSize` chooses `"full"` otherwise chooses `"fast"` |
-| FaceDetection2ComputationDelegate | Computation delegate to use for face detection | cpu | <p>`"none"` &mdash; run on CPU without SIMD optimizations</p> <p>`"cpu"` &mdash; run on CPU with SIMD optimizations</p> <p>`"gpu"` &mdash; run on GPU</p> <p>`"nnapi"` &mdash; run using [NNAPI](https://developer.android.com/ndk/guides/neuralnetworks)</p> |
+| FaceDetectionThreshold | Minimum detection score for a face to be reported | 0.64 (Tracker: 0.4) | Floating point value from the range [0, 1] |
+| FaceDetectionPatchSize | Size of the square patch the detector works with | 640 (Tracker: 256) | Divisible by 32, minimum 64. Higher values decrease performance, but allow detection of smaller faces |
+| FaceDetectionPatchMode | Image patching algorithm to use | fast | <p>`"fast"` &mdash; resizes the image to a single patch</p> <p>`"full"` &mdash; tiles the whole image with patches, finds small faces in large images</p> <p>`"mixed"` &mdash; chooses between the two based on the ratio of the patch size to the image size</p> |
+| FaceDetectionBigFaceSize | Size of the whole-image pass used to find faces too large for a single patch | 384 | Positive integer |
+| FaceDetectionBatchSize | Number of image patches processed at the same time | 1 | Positive integer |
+| TrimOutOfScreenFaces | Discard faces crossing the edges of the image | true | `"true"` or `"false"` |
+| FaceDetectionModel | Path to the face detection model file to load | default | File path or the string `"default"` |
+
+The sample uses `FaceDetectionPatchSize=128` for live camera video.
 
 #### Face Recognition
 
 | Parameter | Description | Default Value | Accepted Values |
 | :---      | :---        |     :---:     | :---            |
-| FaceRecognition2Model | Path to the face recognition model file to load | default | File path or the string `"default"` |
-| FaceRecognition2UseFlipTest | Additionally use mirrored image when creating face template | false | `"false"` or `"true"` |
-| FaceRecognition2ComputationDelegate | Computation delegate to use for face recognition | cpu | <p>`"none"` &mdash; run on CPU without SIMD optimizations</p> <p>`"cpu"` &mdash; run on CPU with SIMD optimizations</p> <p>`"gpu"` &mdash; run on GPU</p> <p>`"nnapi"` &mdash; run using [NNAPI](https://developer.android.com/ndk/guides/neuralnetworks)</p> |
-
-### Activating Improved Face Detection and Recognition in Tracker
-
-To activate improved face detection and recognition in Tracker set `DetectionVersion` Tracker parameter to `2`
-
-```java
-FSDK.SetTrackerParameter(tracker, "DetectionVersion", "2");
-```
-
-Note that this parameter cannot be set for a non-empty Tracker, i.e. it must be set before the first call to `FSDK.FeedFrame`. Additionally, face detection and recognition parameters (as described [above](#set-parameters-of-the-improved-face-detection-and-recognition)) can be set using the `FSDK.SetTrackerParameter` and `FSDK.SetTrackerMultipleParameters` functions (see [documentation](https://www.luxand.com/facesdk/documentation/trackerfunctions.php#FSDK_SetTrackerParameter)).
+| FaceRecognitionModel | Path to the face recognition model file to load | default | File path or the string `"default"` |
+| FaceRecognitionUseFlipTest | Additionally use mirrored image when creating face template | false | `"false"` or `"true"` |
+| FaceRecognitionBatchSize | Number of faces processed in one inference call | 1 | Positive integer |
+| ComputationDelegate | Computation delegate for all models | cpu | <p>`"none"` &mdash; run on CPU without SIMD optimizations</p> <p>`"cpu"` &mdash; run on CPU with SIMD optimizations</p> <p>`"nnapi"` &mdash; run using [NNAPI](https://developer.android.com/ndk/guides/neuralnetworks)</p> |
 
 ## Managing Face Templates in Tracker Memory
 
@@ -170,13 +182,13 @@ int FSDK.DeleteTrackerFace(HTracker tracker, long FaceID);
 int FSDK.GetTrackerFaceImage(HTracker tracker, long FaceID, HImage Image);
 ```
 
-*Returns the face image for the specified `FaceID`. The image is grayscale and the dimensions are 96x96. If the image is not present, the function returns the error code `FSDKE_IMAGE_NOT_PRESENT`.*
+*Returns the face image for the specified `FaceID`. The dimensions are 112x112. Face images are stored when the `KeepFaceImages` Tracker parameter is `true`. If the image is not present, the function returns the error code `FSDKE_FACEIMAGE_NOT_FOUND`.*
 
 ```java
 int FSDK.SetTrackerFaceImage(HTracker tracker, long FaceID, HImage Image);
 ```
 
-*Sets the face image for the specified `FaceID`. The dimensions of the provided `Image` must be 96x96. The `Image` may have any format supported by FSDK. If an image already exists for the `FaceID`, it will be replaced. This function should only be used with an `Image` obtained with `FSDK.GetTrackerFaceImage`.*
+*Sets the face image for the specified `FaceID`. The dimensions of the provided `Image` must be 112x112. If an image already exists for the `FaceID`, it will be replaced.*
 
 ```java
 int FSDK.DeleteTrackerFaceImage(HTracker tracker, long FaceID);
@@ -197,5 +209,15 @@ int FSDK.TrackerMatchFaces(HTracker tracker, FSDK_FaceTemplate FaceTemplate, flo
 
 ## iBeta Certified Liveness Addon
 
-The sample also demonstrates [iBeta Certified Liveness Addon](https://www.luxand.com/facesdk/documentation/certifiedliveness.php) usage.  
+The sample uses the [iBeta Certified Liveness Addon](https://www.luxand.com/facesdk/documentation/certifiedliveness.php) for single-frame presentation attack detection. Tap the liveness button to turn liveness detection on or off.
+
+```java
+/* Copy the iBeta data files from assets to the cache directory */
+FSDK.PrepareData(application);
+FSDK.SetParameter("LivenessModel", "external:dataDir=" + application.getCacheDir().getAbsolutePath());
+
+FSDK.SetTrackerMultipleParameters(tracker, "DetectLiveness=true;SmoothAttributeLiveness=false;LivenessFramesCount=1", errorPosition);
+```
+
+The Tracker reports the `Liveness` and `ImageQuality` attributes, and `LivenessError` if the liveness check failed. `FSDKE_PLUGIN_NO_PERMISSION` (-31) means that your FaceSDK license key does not permit the iBeta add-on.  
 

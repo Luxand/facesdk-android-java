@@ -1,28 +1,30 @@
 /*
  * FaceSDK Library Interface
- * Copyright (C) 2023 Luxand, Inc.
+ * Copyright (C) 2026 Luxand, Inc.
  */
 
 package com.luxand;
 
 import android.app.Application;
+import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 public class FSDK
 {
 	static {
-		//System.loadLibrary("stlport_shared");
 		System.loadLibrary("fsdk");
 	}
-
-
+	
+	
 	// Error codes
-
+	
 	public static final int FSDKE_OK = 0;
 	public static final int FSDKE_FAILED = -1;
 	public static final int FSDKE_NOT_ACTIVATED = -2;
@@ -41,60 +43,83 @@ public class FSDK
 	public static final int FSDKE_CONNECTION_FAILED = -15;
 	public static final int FSDKE_IP_INIT_FAILED = -16;
 	public static final int FSDKE_NEED_SERVER_ACTIVATION = -17;
-	public static final int FSDKE_ID_NOT_FOUND = -18;
-	public static final int FSDKE_ATTRIBUTE_NOT_DETECTED = -19;
-	public static final int FSDKE_INSUFFICIENT_TRACKER_MEMORY_LIMIT = -20;
-	public static final int FSDKE_UNKNOWN_ATTRIBUTE = -21;
-	public static final int FSDKE_UNSUPPORTED_FILE_VERSION = -22;
-	public static final int FSDKE_SYNTAX_ERROR = -23;
-	public static final int FSDKE_PARAMETER_NOT_FOUND = -24;
+    public static final int FSDKE_ID_NOT_FOUND = -18;
+    public static final int FSDKE_ATTRIBUTE_NOT_DETECTED = -19;
+    public static final int FSDKE_INSUFFICIENT_TRACKER_MEMORY_LIMIT = -20;
+    public static final int FSDKE_UNKNOWN_ATTRIBUTE = -21;
+    public static final int FSDKE_UNSUPPORTED_FILE_VERSION = -22;
+    public static final int FSDKE_SYNTAX_ERROR = -23;
+    public static final int FSDKE_PARAMETER_NOT_FOUND = -24;
 	public static final int FSDKE_INVALID_TEMPLATE = -25;
 	public static final int FSDKE_UNSUPPORTED_TEMPLATE_VERSION = -26;
 	public static final int FSDKE_CAMERA_INDEX_DOES_NOT_EXIST = -27;
 	public static final int FSDKE_PLATFORM_NOT_LICENSED = -28;
 	public static final int FSDKE_TENSORFLOW_NOT_INITIALIZED = -29;
-	public static final int FSDKE_FACEID_NOT_FOUND = -32;
-	public static final int FSDKE_FACEIMAGE_NOT_FOUND = -33;
-
+    public static final int FSDKE_PLUGIN_NOT_LOADED = -30;
+    public static final int FSDKE_PLUGIN_NO_PERMISSION = -31;
+    public static final int FSDKE_FACEID_NOT_FOUND = -32;
+    public static final int FSDKE_FACEIMAGE_NOT_FOUND = -33;
+    public static final int FSDKE_IBETA_INITIALIZATION_ERROR = -200;
+	
 	// Facial feature count
-
+	
 	public static final int FSDK_FACIAL_FEATURE_COUNT = 70;
-
-
+	public static final int FSDK_FACE_FEATURE_COUNT = 5;
+	
+	
 	// Types
-
-	public static class FSDK_VIDEOCOMPRESSIONTYPE {
-		public static final int FSDK_MJPEG = 0;
-		public int type;
-	}
-
+	
+    public static class FSDK_VIDEOCOMPRESSIONTYPE {
+        public static final int FSDK_MJPEG = 0;
+        public int type;
+    }
+	
 	public static class FSDK_IMAGEMODE {
 		public static final int FSDK_IMAGE_GRAYSCALE_8BIT = 0;
 		public static final int FSDK_IMAGE_COLOR_24BIT = 1;
 		public static final int FSDK_IMAGE_COLOR_32BIT = 2;
 		public int mode;
 	}
-
+	
 	public static class HImage {  //to pass himage "by reference"
 		protected int himage;
 	}
-
+	
 	public static class HCamera {  //to pass hcamera "by reference"
 		protected int hcamera;
 	}
-
+	
 	public static class HTracker {
 		protected int htracker;
 	}
+	
+	public static class BBox {
+		public TPoint p0 = new TPoint();
+		public TPoint p1 = new TPoint();
+	}
 
-	public static class TFacePosition {
-		public int xc, yc, w;
-		public int padding;
-		public double angle;
+	/**
+	 * A detected face: detection score, in-plane rotation angle, bounding box and five
+	 * key points. Replaces TFace; the box is no longer square, so use width()
+	 * and height() separately.
+	 */
+	public static class TFace {
+		public float score;
+		public float angle;
+		public BBox bbox = new BBox();
+		public TPoint features[] = new TPoint[FSDK_FACE_FEATURE_COUNT];
+
+		public int left()   { return bbox.p0.x; }
+		public int top()    { return bbox.p0.y; }
+		public int right()  { return bbox.p1.x; }
+		public int bottom() { return bbox.p1.y; }
+		public int width()  { return bbox.p1.x - bbox.p0.x; }
+		public int height() { return bbox.p1.y - bbox.p0.y; }
+		public boolean empty() { return width() == 0 || height() == 0; }
 	}
 
 	public static class TFaces {
-		public TFacePosition faces[];
+		public TFace faces[];
 		public int maxFaces;
 		public TFaces(){
 			maxFaces = 100;
@@ -105,43 +130,30 @@ public class FSDK
 			faces = null;
 		}
 	}
-
+	
 	public static class TPoint {
 		public int x, y;
 	}
 
-	public static class BBox {
-		public TPoint p0 = new TPoint();
-		public TPoint p1 = new TPoint();
-	}
+	/** Sub-pixel point. The 70 facial features are floating point as of FaceSDK 9.0. */
+	public static class TPointF {
+		public float x, y;
 
-	public static class TFace {
-		public BBox bbox = new BBox();
-		public TPoint features[] = new TPoint[5];
-
-		{
-			for (var i = 0; i < features.length; ++i)
-				features[i] = new TPoint();
-		}
-	}
-
-	public static class TFaces2 {
-		public TFace faces[] = null;
-		public int maxFaces = 100;
-
-		public TFaces2() {}
-
-		public TFaces2(int maxFaces) {
-			this.maxFaces = maxFaces;
+		/** Rounds to the nearest whole pixel. */
+		public TPoint toTPoint() {
+			TPoint p = new TPoint();
+			p.x = Math.round(x);
+			p.y = Math.round(y);
+			return p;
 		}
 	}
 
 	public static class FSDK_Features {
-		public TPoint features[] = new TPoint[FSDK_FACIAL_FEATURE_COUNT];
+		public TPointF features[] = new TPointF[FSDK_FACIAL_FEATURE_COUNT];
 	}
-
+	
 	public static class FSDK_FaceTemplate {
-		public byte template[] = new byte[2068];
+		public byte template[] = new byte[1040];
 	}
 
 	public static class IDSimilarity {
@@ -149,7 +161,7 @@ public class FSDK
 		public float similarity;
 	}
 
-
+	
 	// Facial features
 
 	public static final int FSDKP_LEFT_EYE = 0;
@@ -217,25 +229,25 @@ public class FSDK
 	public static final int FSDKP_FACE_CONTOUR1 =	7;
 	public static final int FSDKP_FACE_CONTOUR2 =	5;
 	public static final int FSDKP_FACE_CONTOUR12 =	6;
-	public static final int FSDKP_FACE_CONTOUR13 =	8;
+	public static final int FSDKP_FACE_CONTOUR13 =	8;	
 	public static final int FSDKP_FACE_CONTOUR14 =	66;
 	public static final int FSDKP_FACE_CONTOUR15 =	67;
 	public static final int FSDKP_FACE_CONTOUR16 =	68;
 	public static final int FSDKP_FACE_CONTOUR17 =	69;
 
-
-
+	public static native int TEST(AssetManager assetManager, String ParameterName, String ParameterValue, String filesDir);
 	public static native int ActivateLibrary(String LicenseKey);
 	//public static native int GetHardware_ID(String HardwareID[]); //not implemented
 	public static native int GetLicenseInfo(String LicenseInfo[]);
+	public static native int GetVersionInfo(String[] VersionInfo);
 	public static native int SetNumThreads(int Num);
-	public static native int GetNumThreads(int Num[]);
+	public static native int GetNumThreads(int Num[]);   
 	public static native int Initialize();
 	public static native int Finalize();
-
+	
 	public static native int CreateEmptyImage(HImage Image);
 	public static native int FreeImage(HImage Image);
-
+	
 	public static native int LoadImageFromFile(HImage Image, String FileName);
 	public static native int LoadImageFromFileWithAlpha(HImage Image, String FileName);
 	public static native int SaveImageToFile(HImage Image, String FileName);
@@ -248,22 +260,14 @@ public class FSDK
 	public static native int LoadImageFromJpegBuffer(HImage Image, byte Buffer[], int BufferLength);
 	public static native int LoadImageFromPngBuffer(HImage Image, byte Buffer[], int BufferLength);
 	public static native int LoadImageFromPngBufferWithAlpha(HImage Image, byte Buffer[], int BufferLength);
-
-	public static native int DetectFace(HImage Image, TFacePosition FacePosition);
-	public static native int DetectMultipleFaces(HImage Image, TFaces FacePositions);
-	public static native int SetFaceDetectionParameters(boolean HandleArbitraryRotations, boolean DetermineFaceRotationAngle, int InternalResizeWidth);
-	public static native int SetFaceDetectionThreshold(int Threshold);
-	public static native int GetDetectedFaceConfidence(int Confidence[]);
-
-	public static native int DetectFace2(HImage Image, TFace face);
-	public static native int DetectMultipleFaces2(HImage Image, TFaces2 faces);
-
+	   
+	public static native int DetectFace(HImage Image, TFace FacePosition);
+	public static native int DetectMultipleFaces(HImage Image, TFaces FacePositions); 
+	
 	public static native int DetectFacialFeatures(HImage Image, FSDK_Features FacialFeatures);
-	public static native int DetectFacialFeaturesInRegion(HImage Image, TFacePosition FacePosition, FSDK_Features FacialFeatures);
-	public static native int DetectEyes(HImage Image, FSDK_Features Eyes);
-	public static native int DetectEyesInRegion(HImage Image, TFacePosition FacePosition, FSDK_Features Eyes);
-
-
+	public static native int DetectFacialFeaturesInRegion(HImage Image, TFace FacePosition, FSDK_Features FacialFeatures);
+	
+	
 	public static native int CopyImage(HImage SourceImage, HImage DestImage);
 	public static native int ResizeImage(HImage SourceImage, double ratio, HImage DestImage);
 	public static native int RotateImage90(HImage SourceImage, int Multiplier, HImage DestImage);
@@ -274,45 +278,31 @@ public class FSDK
 	public static native int MirrorImage(HImage Image, boolean UseVerticalMirroringInsteadOfHorizontal);
 
 	public static native int ExtractFaceImage(HImage Image, FSDK_Features FacialFeatures, int Width, int Height, HImage ExtractedFaceImage, FSDK_Features ResizedFeatures);
-
-
+	
+	
 	public static native int GetFaceTemplate(HImage Image, FSDK_FaceTemplate FaceTemplate);
-	public static native int GetFaceTemplateInRegion(HImage Image, TFacePosition FacePosition, FSDK_FaceTemplate FaceTemplate);
-	public static native int GetFaceTemplateUsingFeatures(HImage Image, FSDK_Features FacialFeatures, FSDK_FaceTemplate FaceTemplate);
-	public static native int GetFaceTemplateUsingEyes(HImage Image, FSDK_Features EyeCoords, FSDK_FaceTemplate FaceTemplate);
+	public static native int GetFaceTemplateInRegion(HImage Image, TFace FacePosition, FSDK_FaceTemplate FaceTemplate);
 	public static native int MatchFaces(FSDK_FaceTemplate FaceTemplate1, FSDK_FaceTemplate FaceTemplate2, float Similarity[]);
-	public static native int GetMatchingThresholdAtFAR(float FARValue, float Threshold[]);
-	public static native int GetMatchingThresholdAtFRR(float FRRValue, float Threshold[]);
 
-	public static native int GetFaceTemplate2(HImage image, FSDK_FaceTemplate FaceTemplate);
-	public static native int GetFaceTemplateInRegion2(HImage image, TFace face, FSDK_FaceTemplate FaceTemplate);
-
-	public static native int CreateTracker(HTracker Tracker);
-	public static native int FreeTracker(HTracker Tracker);
-	public static native int ClearTracker(HTracker Tracker);
-	public static native int SetTrackerParameter(HTracker Tracker, String ParameterName, String ParameterValue);
-	public static native int SetTrackerMultipleParameters(HTracker Tracker, String Parameters, int ErrorPosition[]);
+    
+    public static native int CreateTracker(HTracker Tracker);
+    public static native int FreeTracker(HTracker Tracker);
+    public static native int ClearTracker(HTracker Tracker);
+    public static native int SetTrackerParameter(HTracker Tracker, String ParameterName, String ParameterValue);
+    public static native int SetTrackerMultipleParameters(HTracker Tracker, String Parameters, int ErrorPosition[]);
 	public static native int GetTrackerParameter(HTracker Tracker, String ParameterName, String ParameterValue[], int MaxSizeInBytes);
-	public static native int FeedFrame(HTracker Tracker, long CameraIdx, HImage Image, long FaceCount[], long IDs[]);
-	public static native int GetTrackerEyes(HTracker Tracker, long CameraIdx, long ID, FSDK_Features Eyes);
-	public static native int GetTrackerFacialFeatures(HTracker Tracker, long CameraIdx, long ID, FSDK_Features FacialFeatures);
-	public static native int GetTrackerFacePosition(HTracker Tracker, long CameraIdx, long ID, TFacePosition FacePosition);
-	public static native int GetTrackerFace(HTracker Tracker, long CameraIdx, long ID, TFace Face);
-	public static native int LockID(HTracker Tracker, long ID);
-	public static native int UnlockID(HTracker Tracker, long ID);
-	public static native int PurgeID(HTracker Tracker, long ID);
-	public static native int SetName(HTracker Tracker, long ID, String Name);
-	public static native int GetName(HTracker Tracker, long ID, String Name[], long MaxSizeInBytes);
-	public static native int GetAllNames(HTracker Tracker, long ID, String Names[], long MaxSizeInBytes);
-	public static native int GetIDReassignment(HTracker Tracker, long ID, long ReassignedID[]);
+    public static native int FeedFrame(HTracker Tracker, long CameraIdx, HImage Image, long FaceCount[], long IDs[]);
+	public static native int GetTrackerFacialFeatures(HTracker Tracker, long CameraIdx, long ID, FSDK_Features FacialFeatures); 
+	public static native int GetTrackerFace(HTracker Tracker, long CameraIdx, long ID, TFace FacePosition);
+    public static native int LockID(HTracker Tracker, long ID);
+    public static native int UnlockID(HTracker Tracker, long ID);
+    public static native int PurgeID(HTracker Tracker, long ID);
+    public static native int SetName(HTracker Tracker, long ID, String Name);
+    public static native int GetName(HTracker Tracker, long ID, String Name[], long MaxSizeInBytes);
+    public static native int GetAllNames(HTracker Tracker, long ID, String Names[], long MaxSizeInBytes);
+    public static native int GetIDReassignment(HTracker Tracker, long ID, long ReassignedID[]);
 	public static native int GetSimilarIDCount(HTracker Tracker, long ID, long Count[]);
 	public static native int GetSimilarIDList(HTracker Tracker, long ID, long SimilarIDList[]);
-
-	public static native int SaveTrackerMemoryToFile(HTracker Tracker, String FileName);
-	public static native int LoadTrackerMemoryFromFile(HTracker Tracker, String FileName);
-	public static native int GetTrackerMemoryBufferSize(HTracker Tracker, long [] BufSize);
-	public static native int SaveTrackerMemoryToBuffer(HTracker Tracker, byte Buffer[]);
-	public static native int LoadTrackerMemoryFromBuffer(HTracker Tracker, byte Buffer[]);
 
 	public static native int GetTrackerIDsCount(HTracker tracker, long[] Count);
 	public static native int GetTrackerAllIDs(HTracker tracker, long[] IDList);
@@ -323,14 +313,23 @@ public class FSDK
 	public static native int GetTrackerFaceImage(HTracker tracker, long FaceID, HImage Image);
 	public static native int SetTrackerFaceImage(HTracker tracker, long FaceID, HImage Image);
 	public static native int DeleteTrackerFaceImage(HTracker tracker, long FaceID);
+	public static native int DeleteTrackerFace(HTracker tracker, long FaceID);
 	public static native int TrackerCreateID(HTracker tracker, FSDK_FaceTemplate FaceTemplate, long[] ID, long[] FaceID);
 	public static native int AddTrackerFaceTemplate(HTracker tracker, long ID, FSDK_FaceTemplate FaceTemplate, long[] FaceID);
 	public static native int TrackerMatchFaces(HTracker tracker, FSDK_FaceTemplate FaceTemplate, float Threshold, IDSimilarity[] Buffer, long[] Count);
+	
+    public static native int SaveTrackerMemoryToFile(HTracker Tracker, String FileName);
+    public static native int LoadTrackerMemoryFromFile(HTracker Tracker, String FileName);
+	public static native int GetTrackerMemoryBufferSize(HTracker Tracker, long[] BufSize);
+	public static native int SaveTrackerMemoryToBuffer(HTracker Tracker, byte Buffer[]);
+	public static native int LoadTrackerMemoryFromBuffer(HTracker Tracker, byte Buffer[]);
 
 	public static native int GetTrackerFacialAttribute(HTracker Tracker, long CameraIdx, long ID, String AttributeName, String AttributeValues[], long MaxSizeInBytes);
+	public static native int DetectFacialAttributeUsingFace(HImage Image, TFace Face, String AttributeName, String AttributeValues[], long MaxSizeInBytes);
 	public static native int DetectFacialAttributeUsingFeatures(HImage Image, FSDK_Features FacialFeatures, String AttributeName, String AttributeValues[], long MaxSizeInBytes);
 	public static native int GetValueConfidence(String AttributeValues, String Value, float Confidence[]);
 
+	
 	public static native int SetHTTPProxy(String ServerNameOrIPAddress, short Port, String UserName, String Password);
 	public static native int OpenIPVideoCamera(FSDK_VIDEOCOMPRESSIONTYPE CompressionType, String URL, String Username, String Password, int TimeoutSeconds, HCamera CameraHandle);
 	public static native int CloseVideoCamera(HCamera CameraHandle);
@@ -341,76 +340,65 @@ public class FSDK
 	public static native int SetParameter(String ParameterName, String ParameterValue);
 	public static native int SetParameters(String Parameters, int ErrorPosition[]);
 
-	public static int InitializeLibrary() {
-		return Initialize();
-	}
-
 	private static class AssetsHelper {
-		private final String assetsPath;
-		private final AssetManager assetManager;
-
-		public AssetsHelper(final Application app) {
-			assetManager = app.getAssets();
-			assetsPath = app.getApplicationContext().getCacheDir().getAbsolutePath() + "/";
+		private Application application;
+		private Context context;
+		private AssetManager assetManager;
+		public AssetsHelper(Application app)
+		{
+			application = app;
+			assetManager = application.getAssets();
+			context = application.getApplicationContext();
+			copyFileOrDir("data");
 		}
-
-		private void copyFile(final String filename) {
+		private void copyFile(String filename) {
+			InputStream in = null;
+			OutputStream out = null;
 			try {
-				final var in = assetManager.open(filename);
+				in = assetManager.open(filename);
+				String newFileName = context.getCacheDir().getAbsolutePath()+ "/" + filename;
 
-				final var newFileName = assetsPath + filename;
-				final var out = new FileOutputStream(newFileName);
+				out = new FileOutputStream(newFileName);
 
-				final var buffer = new byte[1024];
-
+				byte[] buffer = new byte[1024];
 				int read;
-				while ((read = in.read(buffer)) != -1)
+				while ((read = in.read(buffer)) != -1) {
 					out.write(buffer, 0, read);
-
+				}
 				in.close();
+				in = null;
 				out.flush();
 				out.close();
+				out = null;
 			} catch (Exception e) {
-				var message = e.getMessage();
-				if (message == null)
-					message = "Copying Asset Error";
-				Log.e("luxand_fsdk", message);
+				Log.e("tag", e.getMessage());
 			}
 		}
-
-		public void copyFileOrDir(final String path)
+		public void copyFileOrDir(String path)
 		{
+			String[] assets = null;
 			try {
-				final var assets = assetManager.list(path);
-				if (assets == null) {
-					Log.e("luxand_fsdk", "Could not list assets for " + path);
-					return;
-				}
-
+				assets = assetManager.list(path);
 				if (assets.length == 0) {
 					copyFile(path);
-					return;
+				} else {
+					String fullPath = context.getCacheDir().getAbsolutePath()+ "/" + path;
+					File dir = new File(fullPath);
+					if (!dir.exists())
+						dir.mkdir();
+					for (int i = 0; i < assets.length; ++i) {
+						copyFileOrDir(path + "/" + assets[i]);
+					}
 				}
-
-				final var dir = new File(assetsPath + path);
-				if (!dir.exists() && !dir.mkdir()) {
-					Log.e("luxand_fsdk", "Error creating directory for assets " + dir.getAbsolutePath());
-					return;
-				}
-
-                for (final var asset : assets)
-                    copyFileOrDir(path + "/" + asset);
-
 			} catch (IOException ex) {
-				Log.e("luxand_fsdk", "I/O Exception", ex);
+				Log.e("tag", "I/O Exception", ex);
 			}
 		}
 	};
 
-	public static int PrepareData(final Application app)
+	public static int PrepareData(Application app)
 	{
-		new AssetsHelper(app).copyFileOrDir("data");
+		new AssetsHelper(app);
 		return 0;
 	}
-
 }

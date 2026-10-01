@@ -25,9 +25,6 @@ public class FacesProcessor {
     /** Size of the buffer for facial attribute retrieval. */
     private static final long MAX_ATTRIBUTE_VALUE_LENGTH = 1024L;
 
-    /** Use an improved version of face detection and recognition. */
-    private static final boolean USE_NEW_DETECTION = true;
-
     /** Use iBeta liveness addon for liveness detection. If false uses a simpler, but less accurate model. */
     private static final boolean USE_IBETA_LIVENESS_ADDON = true;
 
@@ -88,23 +85,14 @@ public class FacesProcessor {
         private final float[] imageQuality = { -1.f };
         private final String[] attributeValue = { "" };
         private final FSDK.TFace face = new FSDK.TFace();
-        private final FSDK.TFacePosition facePosition = new FSDK.TFacePosition();
 
         private void setID(final long id) {
             this.id = id;
             this.name = getNameForID(id);
 
-            /* New detection uses different classes and API. */
-            if (USE_NEW_DETECTION) {
-                FSDK.GetTrackerFace(tracker, 0, id, face);
-                rect.set(face.bbox.p0.x, face.bbox.p0.y, face.bbox.p1.x, face.bbox.p1.y);
-            } else {
-                FSDK.GetTrackerFacePosition(tracker, 0, id, facePosition);
-
-                final var faceWidth = facePosition.w / 2;
-                final var faceHeight = (int)(faceWidth * 1.15);
-                rect.set(facePosition.xc - faceWidth, facePosition.yc - faceHeight, facePosition.xc + faceWidth, facePosition.yc + faceHeight);
-            }
+            /* TFace stores the face bounding box: bbox.p0 is the top left corner, bbox.p1 is the bottom right corner. */
+            FSDK.GetTrackerFace(tracker, 0, id, face);
+            rect.set(face.left(), face.top(), face.right(), face.bottom());
 
             if (enableLiveness) {
                 if (FSDK.GetTrackerFacialAttribute(tracker, 0, id, "Liveness", attributeValue, MAX_ATTRIBUTE_VALUE_LENGTH) != FSDK.FSDKE_OK ||
@@ -249,10 +237,10 @@ public class FacesProcessor {
 
     /* FaceSDK library is activated here */
     public static boolean initialize(final Application application, final String assetsPath) {
-        if (FSDK.ActivateLibrary("Insert the license key here") != FSDK.FSDKE_OK)
+        if (FSDK.ActivateLibrary("INSERT THE LICENSE KEY HERE") != FSDK.FSDKE_OK)
             return false;
 
-        FSDK.InitializeLibrary();
+        FSDK.Initialize();
 
         /* Copy iBeta liveness addon assets to the cache directory. */
         FSDK.PrepareData(application);
@@ -270,11 +258,10 @@ public class FacesProcessor {
     }
 
     private static void setTrackerParameters() {
-        var parameters = USE_NEW_DETECTION
-            /* FaceDetection2PatchSize sets the image size used for face detection. Lower values increase performance, but decrease accuracy
-            * Threshold and Threshold2 control face matching, new recognition uses lower threshold (values as low as 0.7 work well), compared to the default one. */
-            ? "FaceDetection2PatchSize=256;Threshold=0.8;Threshold2=0.9"
-            : "HandleArbitraryRotations=false;DetermineFaceRotationAngle=false;InternalResizeWidth=256;FaceDetectionThreshold=5";
+        /* FaceDetectionPatchSize sets the image size used for face detection. Lower values increase performance, but decrease accuracy.
+         * FaceDetectionThreshold is the minimal detection score of a face.
+         * Threshold and Threshold2 control face matching in the tracker. */
+        var parameters = "FaceDetectionPatchSize=128;FaceDetectionThreshold=0.4;Threshold=0.8;Threshold2=0.9";
 
         if (enableLiveness)
             parameters += ";DetectLiveness=true";
@@ -286,8 +273,13 @@ public class FacesProcessor {
 
         FSDK.SetTrackerMultipleParameters(tracker, parameters, new int[1]);
 
-        if (USE_IBETA_LIVENESS_ADDON && FSDK.SetParameter("LivenessModel", "external:dataDir=" + assetsPath) != FSDK.FSDKE_OK)
-            Log.e("luxand_fsdk", "Error while initializing external liveness model");
+        if (USE_IBETA_LIVENESS_ADDON) {
+            final var result = FSDK.SetParameter("LivenessModel", "external:dataDir=" + assetsPath);
+            if (result == FSDK.FSDKE_PLUGIN_NO_PERMISSION)
+                Log.e("luxand_fsdk", "The license key does not permit the iBeta liveness addon");
+            else if (result != FSDK.FSDKE_OK)
+                Log.e("luxand_fsdk", "Error while initializing external liveness model: " + result);
+        }
     }
 
     public static boolean isLivenessEnabled() {
@@ -303,31 +295,21 @@ public class FacesProcessor {
         return enableLiveness = !enableLiveness;
     }
 
-    public static boolean load(final File file) {
+    public static void load(final File file) {
+        /* Create a new tracker if the tracker memory file does not exist or cannot be loaded
+         * (for example, it was created with a previous FaceSDK version). */
         if (FSDK.LoadTrackerMemoryFromFile(tracker, file.getAbsolutePath()) != FSDK.FSDKE_OK) {
             FSDK.CreateTracker(tracker);
             clear();
-
-            return true;
+            return;
         }
 
         setTrackerParameters();
-
-        final String[] value = { "" };
-        FSDK.GetTrackerParameter(tracker, "DetectionVersion", value, 16);
-
-        /* Return False if detection version of loaded tracker memory doesn't match.
-        * Using tracker with a wrong detection version is not allowed and leads to incorrect results. */
-        return USE_NEW_DETECTION
-            ? Integer.parseInt(value[0]) == 2
-            : Integer.parseInt(value[0]) == 1;
     }
 
     public static void clear() {
         synchronized (tracker) {
             FSDK.ClearTracker(tracker);
-            if (USE_NEW_DETECTION)
-                FSDK.SetTrackerParameter(tracker, "DetectionVersion", "2");
             setTrackerParameters();
         }
     }
@@ -373,11 +355,8 @@ public class FacesProcessor {
 
         final var faceTemplate = new FSDK.FSDK_FaceTemplate();
 
-        /* Functions utilizing new detection usually have 2 attached to them.
-        * Using incorrect functions will lead to undefined behaviour. */
-        result = USE_NEW_DETECTION
-            ? FSDK.GetFaceTemplate2(image, faceTemplate)
-            : FSDK.GetFaceTemplate(image, faceTemplate);
+        result = FSDK.GetFaceTemplate(image, faceTemplate);
+        FSDK.FreeImage(image);
 
         if (result != FSDK.FSDKE_OK)
             return new MatchingResult(result);
@@ -385,8 +364,7 @@ public class FacesProcessor {
         final var count = new long[1];
         final var buffer = new FSDK.IDSimilarity[1];
 
-        /* New face recognition uses a lower matching threshold. */
-        result = FSDK.TrackerMatchFaces(tracker, faceTemplate, USE_NEW_DETECTION ? 0.7f : 0.992f, buffer, count);
+        result = FSDK.TrackerMatchFaces(tracker, faceTemplate, 0.7f, buffer, count);
 
         if (count[0] == 0)
             return new MatchingResult(result);

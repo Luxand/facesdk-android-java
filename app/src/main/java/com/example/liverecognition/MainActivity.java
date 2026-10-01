@@ -181,9 +181,8 @@ public class MainActivity extends AppCompatActivity {
                 showError(R.string.activation_error, true);
 
             /* Tracker memory file is saved in the app's data directory. */
-            facesFile = new File(getExternalFilesDir(null), "tracker.bin");
-            if (!FacesProcessor.load(facesFile))
-                showError(R.string.wrong_detection_version);
+            facesFile = new File(getExternalFilesDir(null), "tracker90.dat");
+            FacesProcessor.load(facesFile);
 
             facesProcessorLoaded = true;
         }

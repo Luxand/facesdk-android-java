@@ -261,7 +261,7 @@ public class FacesProcessor {
         /* FaceDetectionPatchSize sets the image size used for face detection. Lower values increase performance, but decrease accuracy.
          * FaceDetectionThreshold is the minimal detection score of a face.
          * Threshold and Threshold2 control face matching in the tracker. */
-        var parameters = "FaceDetectionPatchSize=128;FaceDetectionThreshold=0.4;Threshold=0.8;Threshold2=0.9";
+        var parameters = "FaceDetectionPatchSize=128;FaceDetectionThreshold=0.4;Threshold=0.75;Threshold2=0.8";
 
         if (enableLiveness)
             parameters += ";DetectLiveness=true";

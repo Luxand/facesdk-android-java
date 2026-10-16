@@ -313,6 +313,8 @@ public class FSDK
 	public static native int GetTrackerFaceImage(HTracker tracker, long FaceID, HImage Image);
 	public static native int SetTrackerFaceImage(HTracker tracker, long FaceID, HImage Image);
 	public static native int DeleteTrackerFaceImage(HTracker tracker, long FaceID);
+	public static native int GetTrackerFaceFeatures(HTracker tracker, long FaceID, TPoint Features[]);
+	public static native int SetTrackerFaceFeatures(HTracker tracker, long FaceID, TPoint Features[]);
 	public static native int DeleteTrackerFace(HTracker tracker, long FaceID);
 	public static native int TrackerCreateID(HTracker tracker, FSDK_FaceTemplate FaceTemplate, long[] ID, long[] FaceID);
 	public static native int AddTrackerFaceTemplate(HTracker tracker, long ID, FSDK_FaceTemplate FaceTemplate, long[] FaceID);

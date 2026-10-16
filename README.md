@@ -21,7 +21,7 @@ The iBeta certified Liveness add-on for FaceSDK aced Level 1 Presentation Attack
 
 ## Sample
 
-`LiveRecognition` &mdash; live face recognition with liveness detection from the device camera (CameraX), using Luxand FaceSDK 9.0 and the [iBeta Certified Liveness Addon](https://www.luxand.com/facesdk/documentation/certifiedliveness.php).
+`LiveRecognition` &mdash; live face recognition with liveness detection from the device camera (CameraX), using Luxand FaceSDK 9.0.1 and the [iBeta Certified Liveness Addon](https://www.luxand.com/facesdk/documentation/certifiedliveness.php).
 
 - Faces are tracked and recognized with the Tracker API; tap a face to assign a name to it.
 - Recognized faces are stored in the tracker memory file `tracker90.dat` in the app's external files directory.
@@ -47,7 +47,7 @@ public static class BBox {
 
 public static class TFace {
     public float score;       // detection confidence, 0..1
-    public float angle;       // in-plane rotation angle, degrees
+    public float angle;       // in-plane rotation angle, radians
     public BBox bbox = new BBox();
     public TPoint features[] = new TPoint[5];
 
